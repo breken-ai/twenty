@@ -40,7 +40,11 @@ describe('useMultipleRecordPickerChange', () => {
     jest.clearAllMocks();
     jest.mocked(useSnackBar).mockReturnValue({
       enqueueErrorSnackBar,
-    } as unknown as ReturnType<typeof useSnackBar>);
+      enqueueInfoSnackBar: jest.fn(),
+      enqueueSuccessSnackBar: jest.fn(),
+      enqueueWarningSnackBar: jest.fn(),
+      handleSnackBarClose: jest.fn(),
+    });
   });
 
   const setup = ({

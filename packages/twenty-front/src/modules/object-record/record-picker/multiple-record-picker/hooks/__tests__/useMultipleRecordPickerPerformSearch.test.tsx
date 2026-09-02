@@ -1,17 +1,26 @@
-import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
-import { type EnrichedObjectMetadataItem } from '@/object-metadata/types/EnrichedObjectMetadataItem';
-import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
-import { usePerformCombinedFindManyRecords } from '@/object-record/multiple-objects/hooks/usePerformCombinedFindManyRecords';
 import { useMultipleRecordPickerPerformSearch } from '@/object-record/record-picker/multiple-record-picker/hooks/useMultipleRecordPickerPerformSearch';
 import { multipleRecordPickerPickableMorphItemsComponentState } from '@/object-record/record-picker/multiple-record-picker/states/multipleRecordPickerPickableMorphItemsComponentState';
 import { act, renderHook } from '@testing-library/react';
 import { createStore, Provider as JotaiProvider } from 'jotai';
 import { type ReactNode } from 'react';
+import { getMockObjectMetadataItemOrThrow } from '~/testing/utils/getMockObjectMetadataItemOrThrow';
 
-jest.mock('@/object-metadata/hooks/useApolloCoreClient');
-jest.mock('@/object-record/hooks/useObjectPermissions');
+const mockQuery = jest.fn();
+const mockPerformCombinedFindManyRecords = jest.fn();
+
+jest.mock('@/object-metadata/hooks/useApolloCoreClient', () => ({
+  useApolloCoreClient: () => ({ query: mockQuery }),
+}));
+jest.mock('@/object-record/hooks/useObjectPermissions', () => ({
+  useObjectPermissions: () => ({ objectPermissionsByObjectMetadataId: {} }),
+}));
 jest.mock(
   '@/object-record/multiple-objects/hooks/usePerformCombinedFindManyRecords',
+  () => ({
+    usePerformCombinedFindManyRecords: () => ({
+      performCombinedFindManyRecords: mockPerformCombinedFindManyRecords,
+    }),
+  }),
 );
 
 const createSearchResult = (records: object[]) => ({
@@ -25,33 +34,20 @@ const createSearchResult = (records: object[]) => ({
 
 describe('useMultipleRecordPickerPerformSearch', () => {
   it('does not overwrite a selection changed while search is pending', async () => {
+    const objectMetadataItem = getMockObjectMetadataItemOrThrow('person');
     let resolveInitialSearch = (_value: object) => {};
     const initialSearch = new Promise<object>((resolve) => {
       resolveInitialSearch = resolve;
     });
-    const query = jest
-      .fn()
-      .mockReturnValueOnce(initialSearch)
-      .mockResolvedValueOnce(
-        createSearchResult([
-          {
-            objectNameSingular: 'person',
-            recordId: 'record-id',
-          },
-        ]),
-      );
-
-    jest.mocked(useApolloCoreClient).mockReturnValue({
-      query,
-    } as unknown as ReturnType<typeof useApolloCoreClient>);
-    jest.mocked(useObjectPermissions).mockReturnValue({
-      objectPermissionsByObjectMetadataId: {},
-    });
-    jest.mocked(usePerformCombinedFindManyRecords).mockReturnValue({
-      performCombinedFindManyRecords: jest
-        .fn()
-        .mockResolvedValue({ result: {} }),
-    } as unknown as ReturnType<typeof usePerformCombinedFindManyRecords>);
+    mockQuery.mockReturnValueOnce(initialSearch).mockResolvedValueOnce(
+      createSearchResult([
+        {
+          objectNameSingular: objectMetadataItem.nameSingular,
+          recordId: 'record-id',
+        },
+      ]),
+    );
+    mockPerformCombinedFindManyRecords.mockResolvedValue({ result: {} });
 
     const store = createStore();
     const instanceId = 'multiple-record-picker-test';
@@ -62,13 +58,9 @@ describe('useMultipleRecordPickerPerformSearch', () => {
     const selectedMorphItem = {
       isMatchingSearchFilter: true,
       isSelected: true,
-      objectMetadataId: 'person-metadata-id',
+      objectMetadataId: objectMetadataItem.id,
       recordId: 'record-id',
     };
-    const objectMetadataItem = {
-      id: 'person-metadata-id',
-      nameSingular: 'person',
-    } as EnrichedObjectMetadataItem;
 
     store.set(morphItemsState, [selectedMorphItem]);
 
