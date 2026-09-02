@@ -32,9 +32,7 @@ export const MorphRelationOneToManyFieldInput = () => {
       focusId={instanceId}
       componentInstanceId={instanceId}
       onSubmit={handleSubmit}
-      onChange={(morphItem) => {
-        updateMorphRelationOneToMany(morphItem);
-      }}
+      onChange={updateMorphRelationOneToMany}
       onClickOutside={handleSubmit}
       layoutDirection={
         recordFieldInputLayoutDirection === 'downward'

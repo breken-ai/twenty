@@ -17,6 +17,7 @@ import { multipleRecordPickerSearchableObjectMetadataItemsComponentState } from 
 import { getMultipleRecordPickerSelectableListId } from '@/object-record/record-picker/multiple-record-picker/utils/getMultipleRecordPickerSelectableListId';
 import { upsertMorphItem } from '@/object-record/record-picker/multiple-record-picker/utils/upsertMorphItem';
 import { type RecordPickerLayoutDirection } from '@/object-record/record-picker/types/RecordPickerLayoutDirection';
+import { type RecordPickerOnChange } from '@/object-record/record-picker/types/RecordPickerOnChange';
 import { type RecordPickerPickableMorphItem } from '@/object-record/record-picker/types/RecordPickerPickableMorphItem';
 import { CreateNewButton } from '@/ui/input/relation-picker/components/CreateNewButton';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
@@ -32,7 +33,7 @@ import { IconPlus } from 'twenty-ui/icon';
 import { logError } from '~/utils/logError';
 
 type MultipleRecordPickerProps = {
-  onChange?: (morphItem: RecordPickerPickableMorphItem) => void;
+  onChange?: RecordPickerOnChange;
   onSubmit?: () => void;
   onCreate?: (options: {
     searchInput?: string;
