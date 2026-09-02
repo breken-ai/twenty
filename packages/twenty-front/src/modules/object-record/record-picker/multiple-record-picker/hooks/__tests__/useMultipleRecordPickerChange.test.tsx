@@ -5,6 +5,7 @@ import { type ReactNode } from 'react';
 import { useMultipleRecordPickerChange } from '@/object-record/record-picker/multiple-record-picker/hooks/useMultipleRecordPickerChange';
 import { MultipleRecordPickerComponentInstanceContext } from '@/object-record/record-picker/multiple-record-picker/states/contexts/MultipleRecordPickerComponentInstanceContext';
 import { multipleRecordPickerPickableMorphItemsComponentState } from '@/object-record/record-picker/multiple-record-picker/states/multipleRecordPickerPickableMorphItemsComponentState';
+import { type RecordPickerOnChange } from '@/object-record/record-picker/types/RecordPickerOnChange';
 import { type RecordPickerPickableMorphItem } from '@/object-record/record-picker/types/RecordPickerPickableMorphItem';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 
@@ -15,8 +16,9 @@ const componentInstanceId = 'multiple-record-picker-test';
 
 const createMorphItem = (
   isSelected: boolean,
+  recordId = 'record-id',
 ): RecordPickerPickableMorphItem => ({
-  recordId: 'record-id',
+  recordId,
   objectMetadataId: 'object-metadata-id',
   isSelected,
   isMatchingSearchFilter: true,
@@ -42,13 +44,11 @@ describe('useMultipleRecordPickerChange', () => {
   });
 
   const setup = ({
-    initialIsSelected,
+    initialMorphItems = [createMorphItem(false)],
     onChange,
   }: {
-    initialIsSelected: boolean;
-    onChange: (
-      morphItem: RecordPickerPickableMorphItem,
-    ) => void | Promise<void>;
+    initialMorphItems?: RecordPickerPickableMorphItem[];
+    onChange: RecordPickerOnChange;
   }) => {
     const store = createStore();
     const morphItemsState =
@@ -56,7 +56,7 @@ describe('useMultipleRecordPickerChange', () => {
         instanceId: componentInstanceId,
       });
 
-    store.set(morphItemsState, [createMorphItem(initialIsSelected)]);
+    store.set(morphItemsState, initialMorphItems);
 
     const Wrapper = ({ children }: { children: ReactNode }) => (
       <JotaiProvider store={store}>
@@ -73,7 +73,9 @@ describe('useMultipleRecordPickerChange', () => {
       });
 
     return {
-      getIsSelected: () => store.get(morphItemsState)[0].isSelected,
+      getIsSelected: (recordId = 'record-id') =>
+        store.get(morphItemsState).find((item) => item.recordId === recordId)
+          ?.isSelected,
       renderChangeHook,
       ...renderChangeHook(),
     };
@@ -86,7 +88,7 @@ describe('useMultipleRecordPickerChange', () => {
       .fn()
       .mockReturnValueOnce(selection.promise)
       .mockReturnValueOnce(deselection.promise);
-    const picker = setup({ initialIsSelected: false, onChange });
+    const picker = setup({ onChange });
 
     let selectionResult = Promise.resolve();
 
@@ -123,10 +125,45 @@ describe('useMultipleRecordPickerChange', () => {
     });
   });
 
+  it('runs changes for different records independently', async () => {
+    const firstSelection = createDeferred();
+    const onChange = jest.fn(({ recordId }) =>
+      recordId === 'first-record' ? firstSelection.promise : Promise.resolve(),
+    );
+    const picker = setup({
+      initialMorphItems: [
+        createMorphItem(false, 'first-record'),
+        createMorphItem(false, 'second-record'),
+      ],
+      onChange,
+    });
+    let firstSelectionResult = Promise.resolve();
+    let secondSelectionResult = Promise.resolve();
+
+    act(() => {
+      firstSelectionResult = picker.result.current.handleChange(
+        createMorphItem(true, 'first-record'),
+      );
+      secondSelectionResult = picker.result.current.handleChange(
+        createMorphItem(true, 'second-record'),
+      );
+    });
+
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(picker.getIsSelected('first-record')).toBe(true);
+    expect(picker.getIsSelected('second-record')).toBe(true);
+
+    await act(async () => {
+      await secondSelectionResult;
+      firstSelection.resolve();
+      await firstSelectionResult;
+    });
+  });
+
   it('rolls back the latest failed change', async () => {
     const selection = createDeferred();
     const onChange = jest.fn(() => selection.promise);
-    const picker = setup({ initialIsSelected: false, onChange });
+    const picker = setup({ onChange });
     let selectionResult = Promise.resolve();
 
     act(() => {
@@ -154,7 +191,7 @@ describe('useMultipleRecordPickerChange', () => {
       .fn()
       .mockReturnValueOnce(selection.promise)
       .mockReturnValueOnce(deselection.promise);
-    const picker = setup({ initialIsSelected: false, onChange });
+    const picker = setup({ onChange });
     let selectionResult = Promise.resolve();
     let deselectionResult = Promise.resolve();
 
@@ -190,7 +227,7 @@ describe('useMultipleRecordPickerChange', () => {
       .fn()
       .mockReturnValueOnce(selection.promise)
       .mockResolvedValueOnce(undefined);
-    const picker = setup({ initialIsSelected: false, onChange });
+    const picker = setup({ onChange });
     let selectionResult = Promise.resolve();
     let deselectionResult = Promise.resolve();
 
