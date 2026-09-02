@@ -10,6 +10,7 @@ import { multipleRecordPickerSearchFilterComponentState } from '@/object-record/
 import { multipleRecordPickerSearchableObjectMetadataItemsComponentState } from '@/object-record/record-picker/multiple-record-picker/states/multipleRecordPickerSearchableObjectMetadataItemsComponentState';
 import { searchRecordStoreFamilyState } from '@/object-record/record-picker/multiple-record-picker/states/searchRecordStoreComponentFamilyState';
 import { sortMorphItems } from '@/object-record/record-picker/multiple-record-picker/utils/sortMorphItems';
+import { upsertMorphItem } from '@/object-record/record-picker/multiple-record-picker/utils/upsertMorphItem';
 import { type RecordPickerPickableMorphItem } from '@/object-record/record-picker/types/RecordPickerPickableMorphItem';
 import { getObjectPermissionsFromMapByObjectMetadataId } from '@/settings/roles/role-permissions/objects-permissions/utils/getObjectPermissionsFromMapByObjectMetadataId';
 import { type ApolloClient } from '@apollo/client';
@@ -123,42 +124,34 @@ export const useMultipleRecordPickerPerformSearch = () => {
         ),
       );
 
-      const allPickedItems = [
-        ...existingMorphItems.filter(({ isSelected }) => isSelected),
-        ...pickableMorphItems.filter(({ isSelected }) => isSelected),
-      ];
+      const currentMorphItems = [
+        ...pickableMorphItems,
+        ...existingMorphItems,
+      ].reduce(upsertMorphItem, []);
 
-      const uniquePickedItems = allPickedItems.reduce(
-        (acc, item) => {
-          if (!acc.some((existing) => existing.recordId === item.recordId)) {
-            acc.push(item);
+      const updatedPickedItems = currentMorphItems
+        .filter(({ isSelected }) => isSelected)
+        .map((morphItem) => {
+          if (!searchFilter) {
+            return {
+              ...morphItem,
+              isMatchingSearchFilter: true,
+            };
           }
-          return acc;
-        },
-        [] as typeof allPickedItems,
-      );
 
-      const updatedPickedItems = uniquePickedItems.map((morphItem) => {
-        if (!searchFilter) {
+          const isMatchingSearchFilter =
+            searchRecordsFilteredOnPickedRecords.some(
+              ({ recordId }) => recordId === morphItem.recordId,
+            ) ||
+            searchRecordsExcludingPickedRecords.some(
+              ({ recordId }) => recordId === morphItem.recordId,
+            );
+
           return {
             ...morphItem,
-            isMatchingSearchFilter: true,
+            isMatchingSearchFilter,
           };
-        }
-
-        const isMatchingSearchFilter =
-          searchRecordsFilteredOnPickedRecords.some(
-            ({ recordId }) => recordId === morphItem.recordId,
-          ) ||
-          searchRecordsExcludingPickedRecords.some(
-            ({ recordId }) => recordId === morphItem.recordId,
-          );
-
-        return {
-          ...morphItem,
-          isMatchingSearchFilter,
-        };
-      });
+        });
 
       const updatedNonPickedExistingItems = existingMorphItems
         .filter((item) => !item.isSelected)
