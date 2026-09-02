@@ -72,23 +72,20 @@ Set it to the origin your Twenty **server** uses for API routes, not the SPA:
 https://<your-twenty-host>/auth/apps/callback
 ```
 
-Local monorepo dev usually serves on `http://localhost:3000` — confirm the port
-`twenty-server` / `SERVER_URL` actually uses — but a bare `localhost` redirect
-will not work with the manifest as shipped, per the note below.
+Local monorepo dev is usually `http://localhost:3000` — confirm the port
+`twenty-server` / `SERVER_URL` actually uses.
 
-> **PKCE and `localhost`:** the manifest sets `pkce_enabled`, so Slack treats
-> `http://localhost…` as a *desktop* redirect, and desktop redirects cannot
-> request bot scopes — OAuth fails. Local dev therefore needs an `https://`
-> redirect (ngrok, Cloudflare Tunnel) registered in the Slack app, with
-> `SERVER_URL` pointing at the same base URL. Alternatively drop
-> `"pkce_enabled": true` from the manifest before pasting it, for a dev-only app.
->
-> Enabling PKCE marks the app as a **public client, and that is one-way**: it
-> cannot be turned off again without contacting Slack support. Decide before
-> creating the app, not after. See Slack's
+> **Do not enable Slack's PKCE opt-in.** The manifest leaves it off, and it
+> should stay off. Turning it on marks the app a **public client**, which is
+> one-way and reversible only by Slack support, and Twenty always sends the
+> client secret on the token exchange, so a public-client app is liable to have
+> that exchange rejected. It also makes Slack treat `http://localhost…` as a
+> *desktop* redirect, and desktop redirects cannot request bot scopes, which
+> breaks local dev outright. See Slack's
 > [Using PKCE](https://docs.slack.dev/authentication/using-pkce) docs.
+>
 > This is separate from Twenty sending a PKCE challenge on the authorize
-> request, which it does regardless.
+> request, which it does regardless of this setting.
 
 ## Server variables
 
@@ -305,7 +302,7 @@ Fields use camelCase in the step UI:
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Slack refuses the install with *"doesn't have a bot user to install"* | Scopes were added under **User Token Scopes** only | Add every scope from the table above under **Bot Token Scopes**, then reconnect |
-| OAuth fails from a `localhost` redirect | The manifest enables PKCE, so Slack treats the redirect as a desktop one and refuses bot scopes | Use an `https://` redirect and point `SERVER_URL` at the same base URL. PKCE cannot be turned off again on an app already created with it |
+| OAuth fails from a `localhost` redirect | Slack's PKCE opt-in is on, so Slack treats the redirect as a desktop one and refuses bot scopes | Leave the PKCE opt-in off (it cannot be turned off again once set), or use an `https://` redirect and point `SERVER_URL` at the same base URL |
 | Slack reports *"didn't respond with the value of the challenge parameter"* | `SLACK_WEBHOOK_SECRET` is not set, so the handshake fails signature verification | Set it on the application registration, then re-save the Request URL |
 | The bot answers mentions but ignores thread follow-ups | `channels:history` / `groups:history` missing, the bot isn't in the channel, or the 24-hour window lapsed | Confirm the subscriptions and scopes, invite the bot, and mention it again to reopen the thread |
 | Feedback buttons show a warning when clicked | **Interactivity & Shortcuts** is not enabled, or its Request URL is wrong | Enable it and set the `slack-interactivity-resolver` URL above |

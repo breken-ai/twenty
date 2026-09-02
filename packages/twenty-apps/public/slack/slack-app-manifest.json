@@ -36,8 +36,7 @@
         "users:read.email",
         "assistant:write"
       ]
-    },
-    "pkce_enabled": true
+    }
   },
   "settings": {
     "interactivity": {
