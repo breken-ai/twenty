@@ -37,6 +37,28 @@ describe('filterEmails', () => {
     expect(filteredMessages).toEqual([]);
   });
 
+  it('Should filter out same domain emails when the primary handle has uppercase letters', () => {
+    // IMAP handles are saved as typed, while participant handles are
+    // stored lowercased.
+    const primaryHandle = 'Guillim@Acme.com';
+    const messages = messagingGetMessagesServiceGetMessages.filter(
+      (message) => message.externalId === 'AA-work-emails-internal',
+    );
+
+    const filteredMessages = filterEmails(primaryHandle, [], messages, []);
+
+    expect(filteredMessages).toEqual([]);
+  });
+
+  it('Should not filter at all if an uppercase primary handle is a personal email', () => {
+    const primaryHandle = 'Guillim@Gmail.com';
+    const messages = messagingGetMessagesServiceGetMessages;
+
+    const filteredMessages = filterEmails(primaryHandle, [], messages, []);
+
+    expect(filteredMessages).toEqual(messages);
+  });
+
   it('Should keep same-domain emails when isInternalMessagesImportEnabled is true', () => {
     // Workspace opted into syncing internal emails (e.g. university or
     // shared-domain institution). Same-domain participants must not be

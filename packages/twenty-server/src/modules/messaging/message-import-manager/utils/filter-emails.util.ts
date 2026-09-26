@@ -27,11 +27,14 @@ export const filterEmails = (
     blocklist,
   );
 
+  // Participant handles are lowercased, but an IMAP handle is saved as typed.
+  const normalizedPrimaryHandle = primaryHandle.toLowerCase();
+
   const shouldFilterOutInternals =
-    isWorkEmail(primaryHandle) && !isInternalMessagesImportEnabled;
+    isWorkEmail(normalizedPrimaryHandle) && !isInternalMessagesImportEnabled;
 
   const messagesWithoutInternals = shouldFilterOutInternals
-    ? filterOutInternals(primaryHandle, messagesWithoutBlocklisted)
+    ? filterOutInternals(normalizedPrimaryHandle, messagesWithoutBlocklisted)
     : messagesWithoutBlocklisted;
 
   if (!excludeGroupEmails) {
