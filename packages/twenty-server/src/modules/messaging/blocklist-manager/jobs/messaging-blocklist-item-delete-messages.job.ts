@@ -187,10 +187,14 @@ export class BlocklistItemDeleteMessagesJob {
       );
 
     for (const messageChannel of messageChannels) {
+      // Participant handles are stored lowercased, while blocklist entries and
+      // IMAP handles are stored as typed.
       const messageChannelHandles = [
         messageChannel.handle,
         ...(messageChannel.connectedAccount?.handleAliases ?? []),
-      ];
+      ]
+        .filter(isDefined)
+        .map((handle) => handle.toLowerCase());
 
       const handleConditions = handles.map((handle) => {
         const isHandleDomain = handle.startsWith('@');
@@ -203,7 +207,10 @@ export class BlocklistItemDeleteMessagesJob {
               ),
               role: In(BLOCKLISTED_PARTICIPANT_ROLES),
             }
-          : { handle, role: In(BLOCKLISTED_PARTICIPANT_ROLES) };
+          : {
+              handle: handle.toLowerCase(),
+              role: In(BLOCKLISTED_PARTICIPANT_ROLES),
+            };
       });
 
       const matchingParticipants = await messageParticipantRepository.find({
